@@ -1,5 +1,5 @@
 const { TwitterApi } = require("twitter-api-v2");
-const { LinkedIn } = require("linkedin-api-client");
+const LinkedInClient = require("linkedin-api-client");
 
 class SocialMediaClient {
   constructor() {
@@ -10,7 +10,7 @@ class SocialMediaClient {
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
     });
 
-    this.linkedin = new LinkedIn({
+    this.linkedin = LinkedInClient({
       token: process.env.LINKEDIN_ACCESS_TOKEN,
     });
   }
@@ -18,20 +18,15 @@ class SocialMediaClient {
   async post(message) {
     await Promise.all([
       this.twitter.v2.tweet({ text: message }),
-      this.linkedin.post.share({
-        content: {
-          contentEntities: [],
-          title: "",
-          description: message,
-        },
+      this.linkedin.posts.share({
+        author: `urn:li:person:${process.env.LINKEDIN_USER_ID}`,
+        commentary: message,
+        visibility: "PUBLIC",
         distribution: {
-          linkedInDistributionTarget: {
-            visibleToGuest: true,
-          },
+          feedDistribution: "MAIN_FEED",
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
         },
-        owner: "urn:li:person:" + process.env.LINKEDIN_USER_ID,
-        subject: "",
-        text: { text: message },
       }),
     ]);
   }

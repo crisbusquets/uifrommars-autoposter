@@ -1,0 +1,14 @@
+{
+  "name": "uifrommars-autoposter",
+  "version": "1.0.0",
+  "dependencies": {
+    "twitter-api-v2": "^1.15.0",
+    "linkedin-api-client": "^0.3.0",
+    "googleapis": "^118.0.0",
+    "@octokit/rest": "^19.0.7"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "netlify build"
+  }
+}

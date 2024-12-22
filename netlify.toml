@@ -1,0 +1,10 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[functions]
+  schedule = "0 */4 * * *"  # Runs every 4 hours

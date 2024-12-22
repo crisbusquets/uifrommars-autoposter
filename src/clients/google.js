@@ -1,5 +1,4 @@
 const { google } = require("googleapis");
-const { UserRefreshClient, GoogleAuth, Impersonated } = require("google-auth-library");
 
 class GoogleSheetsClient {
   constructor() {
@@ -7,29 +6,30 @@ class GoogleSheetsClient {
   }
 
   async initialize() {
-    const auth = new GoogleAuth({
-      credentials: {
-        type: "external_account",
-        audience: process.env.GOOGLE_WORKLOAD_IDENTITY_PROVIDER,
-        subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
-        token_url: "https://sts.googleapis.com/v1/token",
-        service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/uifrommars-autoposter@uifrommars-autopost.iam.gserviceaccount.com:generateAccessToken`,
-        credential_source: {
-          url: "https://token.netlify.app/.netlify/functions/scheduled-poster",
-          headers: {},
-          format: {
-            type: "json",
-            subject_token_field_name: "access_token",
+    const auth = new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+      clientOptions: {
+        credentials: {
+          type: "external_account",
+          audience: `//iam.googleapis.com/${process.env.GOOGLE_WORKLOAD_IDENTITY_PROVIDER}`,
+          subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+          token_url: "https://sts.googleapis.com/v1/token",
+          service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}:generateAccessToken`,
+          credential_source: {
+            url: `${process.env.NETLIFY_URL}/.netlify/functions/token`,
+            headers: {},
+            format: {
+              type: "json",
+              subject_token_field_name: "access_token",
+            },
           },
         },
       },
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
 
-    const authClient = await auth.getClient();
     this.client = google.sheets({
       version: "v4",
-      auth: authClient,
+      auth: await auth.getClient(),
     });
   }
 
@@ -44,10 +44,12 @@ class GoogleSheetsClient {
         range: "Posts!A2:D",
       });
 
-      console.log("Sheets response:", response.data);
       return response.data.values || [];
     } catch (error) {
-      console.error("Error fetching posts:", error);
+      console.error("Error fetching posts:", error.message);
+      if (error.response) {
+        console.error("Error details:", error.response.data);
+      }
       throw error;
     }
   }

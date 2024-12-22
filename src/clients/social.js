@@ -1,5 +1,5 @@
 const { TwitterApi } = require("twitter-api-v2");
-const LinkedInClient = require("linkedin-api-client");
+const axios = require("axios");
 
 class SocialMediaClient {
   constructor() {
@@ -10,25 +10,57 @@ class SocialMediaClient {
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
     });
 
-    this.linkedin = LinkedInClient({
-      token: process.env.LINKEDIN_ACCESS_TOKEN,
-    });
+    // Initialize LinkedIn credentials
+    this.linkedInCredentials = {
+      clientId: process.env.LINKEDIN_CLIENT_ID,
+      clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+      accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
+      idToken: process.env.LINKEDIN_ID_TOKEN,
+    };
   }
 
   async post(message) {
-    await Promise.all([
-      this.twitter.v2.tweet({ text: message }),
-      this.linkedin.posts.share({
-        author: `urn:li:person:${process.env.LINKEDIN_USER_ID}`,
-        commentary: message,
-        visibility: "PUBLIC",
-        distribution: {
-          feedDistribution: "MAIN_FEED",
-          targetEntities: [],
-          thirdPartyDistributionChannels: [],
+    try {
+      const [twitterResponse, linkedinResponse] = await Promise.all([
+        this.twitter.v2.tweet({ text: message }),
+        this.postToLinkedIn(message),
+      ]);
+
+      console.log("Posted successfully to Twitter and LinkedIn");
+      return { twitter: twitterResponse, linkedin: linkedinResponse };
+    } catch (error) {
+      console.error("Error posting to social media:", error);
+      throw error;
+    }
+  }
+
+  async postToLinkedIn(message) {
+    const url = "https://api.linkedin.com/v2/shares";
+    const data = {
+      owner: `urn:li:person:${this.linkedInCredentials.idToken}`,
+      text: {
+        text: message,
+      },
+      distribution: {
+        linkedInDistributionTarget: {
+          visibleToGuest: true,
         },
-      }),
-    ]);
+      },
+    };
+
+    const headers = {
+      Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
+      "Content-Type": "application/json",
+      "X-Restli-Protocol-Version": "2.0.0",
+    };
+
+    try {
+      const response = await axios.post(url, data, { headers });
+      return response.data;
+    } catch (error) {
+      console.error("LinkedIn API error:", error.response ? error.response.data : error.message);
+      throw error;
+    }
   }
 }
 

@@ -1,43 +1,46 @@
+// scheduled-poster.js
 const GoogleSheetsClient = require("../../src/clients/google");
-const GitHubClient = require("../../src/clients/github");
 const SocialMediaClient = require("../../src/clients/social");
-const PostManager = require("../../src/utils/post-manager");
 
 exports.handler = async (event) => {
   try {
     const sheets = new GoogleSheetsClient();
-    const github = new GitHubClient();
     const social = new SocialMediaClient();
 
     const posts = await sheets.getPosts();
-    const history = await github.getPostHistory();
-    const post = PostManager.getEligiblePost(posts, history);
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-    if (!post) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: "No eligible posts found" }),
-      };
+    // Filter eligible posts
+    const eligiblePosts = posts.filter((post) => {
+      const lastPosted = post.lastPosted ? new Date(post.lastPosted).getTime() : 0;
+      return lastPosted < thirtyDaysAgo;
+    });
+
+    if (eligiblePosts.length === 0) {
+      return { statusCode: 200, body: JSON.stringify({ message: "No eligible posts" }) };
     }
 
-    const [url, title, messages] = post;
-    const message = PostManager.getRandomMessage(messages);
+    // Select random post and message
+    const post = eligiblePosts[Math.floor(Math.random() * eligiblePosts.length)];
+    const messages = post.messages
+      .split("|")
+      .map((m) => m.trim())
+      .filter(Boolean);
+    const message = messages[Math.floor(Math.random() * messages.length)];
 
+    // Post to social media
     await social.post(message);
 
-    history.posts[url] = Date.now();
-    await github.updatePostHistory(history);
+    // Update last posted date in Google Sheet
+    await sheets.updateLastPosted(post.url);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        message: `Posted successfully: ${message}`,
-        url,
-        title,
-      }),
+      body: JSON.stringify({ message: `Posted successfully: ${message}` }),
     };
   } catch (error) {
-    console.error("Error in scheduled poster:", error);
+    console.error("Error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),

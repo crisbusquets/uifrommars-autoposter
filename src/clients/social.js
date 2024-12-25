@@ -15,38 +15,42 @@ class SocialMediaClient {
       clientId: process.env.LINKEDIN_CLIENT_ID,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
       accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
-      idToken: process.env.LINKEDIN_ID_TOKEN,
     };
+    console.log("LinkedIn Client:", this.linkedin);
   }
 
-  async post(message) {
+  async post(message, url) {
     try {
-      const [twitterResponse, linkedinResponse] = await Promise.all([
-        this.twitter.v2.tweet({ text: message }),
-        this.postToLinkedIn(message),
-      ]);
+      console.log("Attempting to post to Twitter and LinkedIn...");
 
-      console.log("Posted successfully to Twitter and LinkedIn");
-      return { twitter: twitterResponse, linkedin: linkedinResponse };
+      // Post to both platforms in parallel
+      const results = await Promise.allSettled([this.postToTwitter(message, url), this.postToLinkedIn(message, url)]);
+
+      // Log individual results
+      results.forEach((result, index) => {
+        const platform = index === 0 ? "Twitter" : "LinkedIn";
+        if (result.status === "fulfilled") {
+          console.log(`Posted successfully to ${platform}:`, result.value);
+        } else {
+          console.error(`Failed to post to ${platform}:`, result.reason);
+        }
+      });
+
+      return results;
     } catch (error) {
       console.error("Error posting to social media:", error);
       throw error;
     }
   }
 
-  async postToLinkedIn(message) {
-    const url = "https://api.linkedin.com/v2/shares";
-    const data = {
-      owner: `urn:li:person:${this.linkedInCredentials.idToken}`,
-      text: {
-        text: message,
-      },
-      distribution: {
-        linkedInDistributionTarget: {
-          visibleToGuest: true,
-        },
-      },
-    };
+  async postToTwitter(message, url) {
+    console.log("Posting to Twitter:", message, url);
+    const tweetText = url ? `${message}\n\n${url}` : message;
+    return await this.twitter.v2.tweet({ text: tweetText });
+  }
+
+  async postToLinkedIn(message, url) {
+    console.log("Posting to LinkedIn:", message, url);
 
     const headers = {
       Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
@@ -55,10 +59,35 @@ class SocialMediaClient {
     };
 
     try {
-      const response = await axios.post(url, data, { headers });
+      const data = {
+        author: `urn:li:member:${process.env.LINKEDIN_USER_ID}`,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: {
+              text: message,
+            },
+            shareMediaCategory: url ? "ARTICLE" : "NONE",
+            media: url
+              ? [
+                  {
+                    status: "READY",
+                    originalUrl: url,
+                  },
+                ]
+              : undefined,
+          },
+        },
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+        },
+      };
+
+      console.log("LinkedIn request data:", JSON.stringify(data, null, 2));
+      const response = await axios.post("https://api.linkedin.com/v2/ugcPosts", data, { headers });
       return response.data;
     } catch (error) {
-      console.error("LinkedIn API error:", error.response ? error.response.data : error.message);
+      console.error("LinkedIn API error:", error.response?.data || error);
       throw error;
     }
   }

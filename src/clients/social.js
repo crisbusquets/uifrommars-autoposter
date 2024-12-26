@@ -10,23 +10,18 @@ class SocialMediaClient {
       accessSecret: process.env.TWITTER_ACCESS_SECRET,
     });
 
-    // Initialize LinkedIn credentials
     this.linkedInCredentials = {
       clientId: process.env.LINKEDIN_CLIENT_ID,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
       accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
     };
-    console.log("LinkedIn Client:", this.linkedin);
   }
 
   async post(message, url) {
     try {
       console.log("Attempting to post to Twitter and LinkedIn...");
-
-      // Post to both platforms in parallel
       const results = await Promise.allSettled([this.postToTwitter(message, url), this.postToLinkedIn(message, url)]);
 
-      // Log individual results
       results.forEach((result, index) => {
         const platform = index === 0 ? "Twitter" : "LinkedIn";
         if (result.status === "fulfilled") {
@@ -49,46 +44,77 @@ class SocialMediaClient {
     return await this.twitter.v2.tweet({ text: tweetText });
   }
 
-  async postToLinkedIn(message, url) {
-    console.log("Posting to LinkedIn:", message, url);
+  async verifyLinkedInToken() {
+    try {
+      const response = await axios.get("https://api.linkedin.com/v2/userinfo", {
+        headers: {
+          Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      console.log("LinkedIn token verification response:", response.data);
+      return response.status === 200;
+    } catch (error) {
+      console.error("LinkedIn token verification failed:", error.response?.data);
+      return false;
+    }
+  }
 
-    const headers = {
-      Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
-      "Content-Type": "application/json",
-      "X-Restli-Protocol-Version": "2.0.0",
+  async postToLinkedIn(message, url) {
+    // Verify token before posting
+    const isTokenValid = await this.verifyLinkedInToken();
+    if (!isTokenValid) {
+      throw new Error("LinkedIn token is invalid or expired");
+    }
+    const data = {
+      author: `urn:li:person:O_2_rrs7ZU`,
+      commentary: message,
+      visibility: "PUBLIC",
+      lifecycleState: "PUBLISHED",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      content: {
+        article: {
+          source: url,
+          title: message,
+          description: message,
+        },
+      },
     };
 
     try {
-      const data = {
-        author: `urn:li:member:${process.env.LINKEDIN_USER_ID}`,
-        lifecycleState: "PUBLISHED",
-        specificContent: {
-          "com.linkedin.ugc.ShareContent": {
-            shareCommentary: {
-              text: message,
-            },
-            shareMediaCategory: url ? "ARTICLE" : "NONE",
-            media: url
-              ? [
-                  {
-                    status: "READY",
-                    originalUrl: url,
-                  },
-                ]
-              : undefined,
-          },
+      const response = await axios.post("https://api.linkedin.com/rest/posts", data, {
+        headers: {
+          Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
+          "X-Restli-Protocol-Version": "2.0.0",
+          "LinkedIn-Version": "202401",
+          "Content-Type": "application/json",
         },
-        visibility: {
-          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-        },
-      };
-
-      console.log("LinkedIn request data:", JSON.stringify(data, null, 2));
-      const response = await axios.post("https://api.linkedin.com/v2/ugcPosts", data, { headers });
+      });
       return response.data;
     } catch (error) {
-      console.error("LinkedIn API error:", error.response?.data || error);
-      throw error;
+      const errorData = error.response?.data;
+      const errorStatus = error.response?.status;
+
+      let errorMessage = "LinkedIn API error";
+      if (errorStatus === 401) {
+        errorMessage = "LinkedIn token is unauthorized - needs refresh";
+      } else if (errorStatus === 403) {
+        errorMessage = "LinkedIn token doesn't have required permissions";
+      } else if (errorStatus === 429) {
+        errorMessage = "LinkedIn API rate limit exceeded";
+      }
+
+      console.error(`${errorMessage}:`, {
+        status: errorStatus,
+        data: errorData,
+        headers: error.response?.headers,
+      });
+
+      throw new Error(errorMessage);
     }
   }
 }

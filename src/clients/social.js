@@ -17,10 +17,13 @@ class SocialMediaClient {
     };
   }
 
-  async post(message, url) {
+  async post(message, url, title) {
     try {
       console.log("Attempting to post to Twitter and LinkedIn...");
-      const results = await Promise.allSettled([this.postToTwitter(message, url), this.postToLinkedIn(message, url)]);
+      const results = await Promise.allSettled([
+        this.postToTwitter(message, url),
+        this.postToLinkedIn(message, url, title),
+      ]);
 
       results.forEach((result, index) => {
         const platform = index === 0 ? "Twitter" : "LinkedIn";
@@ -60,7 +63,7 @@ class SocialMediaClient {
     }
   }
 
-  async postToLinkedIn(message, url) {
+  async postToLinkedIn(message, url, title) {
     // Verify token before posting
     const isTokenValid = await this.verifyLinkedInToken();
     if (!isTokenValid) {
@@ -79,7 +82,7 @@ class SocialMediaClient {
       content: {
         article: {
           source: url,
-          title: message,
+          title: title,
           description: message,
         },
       },
@@ -90,7 +93,7 @@ class SocialMediaClient {
         headers: {
           Authorization: `Bearer ${this.linkedInCredentials.accessToken}`,
           "X-Restli-Protocol-Version": "2.0.0",
-          "LinkedIn-Version": "202401",
+          "LinkedIn-Version": "202411",
           "Content-Type": "application/json",
         },
       });

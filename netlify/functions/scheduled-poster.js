@@ -11,26 +11,41 @@ exports.handler = async (event) => {
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-    console.log("All posts:", posts);
-    console.log("Thirty days ago:", new Date(thirtyDaysAgo).toISOString());
+    console.log("Total posts fetched:", posts.length);
 
-    // Filter eligible posts
+    // Filter eligible posts with better date handling
     const eligiblePosts = posts.filter((post) => {
-      const lastPosted = post.lastPosted ? new Date(post.lastPosted).getTime() : 0;
-      const isEligible = lastPosted < thirtyDaysAgo;
+      // If no lastPosted date exists, post is eligible
+      if (!post.lastPosted) {
+        console.log(`Post ${post.url} has never been posted - eligible`);
+        return true;
+      }
+
+      let lastPostedDate;
+      try {
+        // Try to parse the date
+        lastPostedDate = new Date(post.lastPosted).getTime();
+        // Check if we got a valid date
+        if (isNaN(lastPostedDate)) {
+          console.log(`Post ${post.url} has invalid date format - treating as eligible`);
+          return true;
+        }
+      } catch (error) {
+        console.log(`Post ${post.url} has unparseable date - treating as eligible`);
+        return true;
+      }
+
+      const isEligible = lastPostedDate < thirtyDaysAgo;
       console.log(`Post ${post.url}: last posted ${post.lastPosted}, eligible: ${isEligible}`);
       return isEligible;
     });
 
-    console.log("Eligible posts:", eligiblePosts);
+    console.log("Eligible posts found:", eligiblePosts.length);
 
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
       return {
         statusCode: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ message: "No eligible posts - all posts are too recent" }),
       };
     }
@@ -51,7 +66,7 @@ exports.handler = async (event) => {
     // Post to social media
     console.log("Attempting to post to social media...");
     try {
-      const results = await social.post(message, post.url);
+      const results = await social.post(message, post.url, post.title);
       console.log("Social media posting results:", results);
     } catch (error) {
       console.error("Error posting to social media:", error);
@@ -63,9 +78,6 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         message: `Posted successfully: ${message}`,
         post: post.url,
@@ -75,9 +87,6 @@ exports.handler = async (event) => {
     console.error("Error:", error);
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         error: error.message,
         details: error.response?.data || error.stack,

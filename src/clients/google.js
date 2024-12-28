@@ -21,16 +21,25 @@ class GoogleSheetsClient {
     try {
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: "A:D", // Only get needed columns
+        range: "A:D", // Get needed columns
       });
 
-      const [headers, ...rows] = response.data.values || [];
-      return rows.map((row) => ({
-        url: row[0],
-        title: row[1],
-        messages: row[2],
-        lastPosted: row[3],
-      }));
+      const rows = response.data.values || [];
+
+      // Skip header row and map data
+      return rows
+        .slice(1)
+        .map((row) => ({
+          url: row[0] || "",
+          title: row[1] || "",
+          messages: row[2] || "",
+          lastPosted: row[3] || null, // Return null if no date exists
+        }))
+        .filter(
+          (post) =>
+            // Filter out rows with missing essential data
+            post.url && post.title && post.messages
+        );
     } catch (error) {
       console.error("Error fetching from Google Sheets:", error);
       throw error;

@@ -5,11 +5,14 @@ const LinkedInClient = require("../../src/clients/linkedin.js");
 const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../../src/clients/time-windows.js");
 const TelegramNotifier = require("../../src/clients/telegram-notifications.js");
 
-exports.handler = async (event, context) => {
+exports.handler = async function (event, context) {
+  const currentTime = new Date();
   const notifier = new TelegramNotifier();
 
-  // Check if we're within a posting window and should post
-  if (!shouldPostNow()) {
+  // Check if we're within any time window and should post
+  const windowCheck = isWithinTimeWindow(currentTime);
+
+  if (!windowCheck.inWindow || !shouldPostNow()) {
     const stats = getPostingStats();
     await notifier.sendMessage(notifier.formatSkipped(stats));
     console.log("Skipping post. Current stats:", stats);
@@ -39,7 +42,6 @@ exports.handler = async (event, context) => {
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
     console.log("Current time (Spanish):", new Date(now).toLocaleString("es-ES", { timeZone: "Europe/Madrid" }));
-    console.log("All posts:", posts);
     console.log("Thirty days ago:", new Date(thirtyDaysAgo).toISOString());
 
     // Filter eligible posts
@@ -49,8 +51,6 @@ exports.handler = async (event, context) => {
       console.log(`Post ${post.url}: last posted ${post.lastPosted}, eligible: ${isEligible}`);
       return isEligible;
     });
-
-    console.log("Eligible posts:", eligiblePosts);
 
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
@@ -69,7 +69,6 @@ exports.handler = async (event, context) => {
       .split("|")
       .map((m) => m.trim())
       .filter(Boolean);
-    console.log("Available messages:", messages);
 
     const message = messages[Math.floor(Math.random() * messages.length)];
     console.log("Selected message:", message);
@@ -84,8 +83,6 @@ exports.handler = async (event, context) => {
         await notifier.sendMessage(notifier.formatError(twitterError));
         results.twitter = { error: twitterError.message };
       }
-    } else {
-      console.log("Twitter posting disabled");
     }
 
     // Handle LinkedIn posting
@@ -98,8 +95,6 @@ exports.handler = async (event, context) => {
         await notifier.sendMessage(notifier.formatError(linkedinError));
         results.linkedin = { error: linkedinError.message };
       }
-    } else {
-      console.log("LinkedIn posting disabled");
     }
 
     // Update last posted date if at least one platform was successful

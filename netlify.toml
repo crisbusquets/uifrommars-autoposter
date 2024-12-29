@@ -6,5 +6,22 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-[functions]
-  schedule = "45-59/5 8, 0-15/5 9, 27-57/5 13, 0-45/5 18, 0-30/5 23, 0-30/5 1 * * *"
+# Morning window (8:45-9:15 AM)
+[functions.morning]
+  schedule = "45-59/5 8,0-15/5 9 * * *"
+
+# Noon window (1:27-1:57 PM)
+[functions.noon]
+  schedule = "27-57/5 13 * * *"
+
+# Evening window (6:00-6:45 PM)
+[functions.evening]
+  schedule = "0-45/5 18 * * *"
+
+# LATAM evening window (11:00-11:30 PM)
+[functions.latam_evening]
+  schedule = "0-30/5 23 * * *"
+
+# LATAM night window (1:00-1:30 AM)
+[functions.latam_night]
+  schedule = "0-30/5 1 * * *"

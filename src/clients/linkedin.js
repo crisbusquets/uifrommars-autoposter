@@ -25,41 +25,121 @@ class LinkedInClient {
     }
   }
 
-  async uploadImage(imageUrl) {
+  async getFullResolutionUrl(imageUrl) {
     try {
-      // First, register the image upload
-      const registerResponse = await axios.post(
-        "https://api.linkedin.com/v2/images",
+      // Try to parse the URL and path
+      const url = new URL(imageUrl);
+      const pathParts = url.pathname.split("/");
+      const filename = pathParts[pathParts.length - 1];
+      const uploadDir = pathParts[pathParts.length - 2];
+
+      // If it's in the wp-content/uploads directory and has a date-based structure
+      if (url.pathname.includes("/wp-content/uploads/") && uploadDir.match(/^\d{4}/)) {
+        // Remove any existing size suffix (e.g., -300x200)
+        const baseFilename = filename.replace(/-\d+x\d+(?=\.[^.]+$)/, "");
+
+        // Construct the full resolution URL
+        pathParts[pathParts.length - 1] = baseFilename;
+        const fullResUrl = `${url.protocol}//${url.host}${pathParts.join("/")}`;
+
+        console.log("Using full resolution URL:", fullResUrl);
+        return fullResUrl;
+      }
+
+      return imageUrl; // Return original if not a WordPress media URL
+    } catch (error) {
+      console.warn("Error parsing image URL, using original:", error);
+      return imageUrl;
+    }
+  }
+
+  async uploadImage(imageUrl) {
+    if (!imageUrl) {
+      console.log("No image URL provided, skipping image upload");
+      return null;
+    }
+
+    try {
+      console.log("Starting image upload process for:", imageUrl);
+
+      // Get the full resolution URL
+      const fullResUrl = await this.getFullResolutionUrl(imageUrl);
+      console.log("Full resolution URL:", fullResUrl);
+
+      // Validate the image URL is from uifrommars.com
+      if (!fullResUrl.includes("uifrommars.com")) {
+        console.warn("Image URL is not from uifrommars.com domain, skipping:", fullResUrl);
+        return null;
+      }
+
+      // Step 1: Initialize the upload using the new Images API
+      const initializeResponse = await axios.post(
+        "https://api.linkedin.com/rest/images?action=initializeUpload",
         {
           initializeUploadRequest: {
-            owner: `urn:li:person:${process.env.LINKEDIN_USER_ID}`,
+            owner: `urn:li:person:O_2_rrs7ZU`,
           },
         },
         {
           headers: {
             Authorization: `Bearer ${this.credentials.accessToken}`,
-            "X-Restli-Protocol-Version": "2.0.0",
+            "LinkedIn-Version": "202411",
+            "Content-Type": "application/json",
           },
         }
       );
 
-      // Get the image data from the URL
-      const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
-      const imageBuffer = Buffer.from(imageResponse.data, "binary");
+      console.log("Upload initialization response:", initializeResponse.data);
 
-      // Upload the image using the upload URL from the register response
-      const uploadUrl = registerResponse.data.value.uploadUrl;
-      const imageUrn = registerResponse.data.value.image;
+      // Get the upload URL and image URN from the response
+      const { uploadUrl, image: imageUrn } = initializeResponse.data.value;
 
-      await axios.put(uploadUrl, imageBuffer, {
+      // Step 2: First get the image metadata and validate size
+      const metadataResponse = await axios.head(fullResUrl, {
         headers: {
-          "Content-Type": "application/octet-stream",
+          "User-Agent": "UIFromMars-Autoposter/1.0",
         },
       });
 
+      // Log content type and other metadata
+      const contentLength = parseInt(metadataResponse.headers["content-length"] || "0", 10);
+      console.log("Image metadata:", {
+        contentType: metadataResponse.headers["content-type"],
+        contentLength,
+        sizeInMB: (contentLength / (1024 * 1024)).toFixed(2) + " MB",
+        dimensions: metadataResponse.headers["content-dimensions"] || "Not provided",
+      });
+
+      // Download the image
+      const imageResponse = await axios.get(fullResUrl, {
+        responseType: "arraybuffer",
+        headers: {
+          Accept: "image/*",
+          "User-Agent": "UIFromMars-Autoposter/1.0",
+          "Cache-Control": "no-cache",
+        },
+        maxContentLength: 5 * 1024 * 1024, // 5MB limit for LinkedIn
+      });
+
+      // Log image size for debugging
+      const imageSize = imageResponse.data.length;
+      console.log(`Image size: ${(imageSize / 1024 / 1024).toFixed(2)}MB`);
+
+      // Step 3: Upload the image binary using the provided upload URL
+      await axios.put(uploadUrl, imageResponse.data, {
+        headers: {
+          "Content-Type": metadataResponse.headers["content-type"] || "application/octet-stream",
+        },
+      });
+
+      console.log("Image upload completed. Image URN:", imageUrn);
       return imageUrn;
     } catch (error) {
-      console.error("Error uploading image to LinkedIn:", error);
+      console.error("Error in image upload process:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       return null;
     }
   }
@@ -79,8 +159,28 @@ class LinkedInClient {
       titleFromSpreadsheet: title,
     });
 
-    const data = {
-      author: `urn:li:person:${process.env.LINKEDIN_USER_ID}`,
+    // Handle the OG image upload
+    let thumbnailUrn = null;
+    if (ogImage) {
+      try {
+        thumbnailUrn = await this.uploadImage(ogImage);
+        if (thumbnailUrn) {
+          console.log("Successfully uploaded thumbnail:", thumbnailUrn);
+        } else {
+          console.log("Skipped thumbnail upload - invalid or missing image URL");
+        }
+      } catch (error) {
+        console.warn("Failed to upload thumbnail, continuing without it:", {
+          error: error.message,
+          ogImage,
+        });
+      }
+    } else {
+      console.log("No OG image URL provided in spreadsheet");
+    }
+
+    const postData = {
+      author: `urn:li:person:O_2_rrs7ZU`,
       commentary: message,
       visibility: "PUBLIC",
       distribution: {
@@ -93,33 +193,23 @@ class LinkedInClient {
           source: url,
           title: title || "Blog Post",
           description: message.substring(0, 4000),
-          thumbnail: ogImage,
+          thumbnail: thumbnailUrn,
         },
       },
       lifecycleState: "PUBLISHED",
       isReshareDisabledByAuthor: false,
     };
 
-    if (ogImage) {
-      try {
-        const imageUrn = await this.uploadImage(ogImage);
-        if (imageUrn) {
-          data.content.article.thumbnail = imageUrn;
-        }
-      } catch (error) {
-        console.error("Failed to upload image, continuing without thumbnail:", error);
-      }
-    }
-
     try {
-      const response = await axios.post("https://api.linkedin.com/rest/posts", data, {
+      const response = await axios.post("https://api.linkedin.com/rest/posts", postData, {
         headers: {
           Authorization: `Bearer ${this.credentials.accessToken}`,
-          "X-Restli-Protocol-Version": "2.0.0",
           "LinkedIn-Version": "202411",
           "Content-Type": "application/json",
         },
       });
+
+      console.log("LinkedIn post created successfully:", response.data);
       return response.data;
     } catch (error) {
       const errorData = error.response?.data;

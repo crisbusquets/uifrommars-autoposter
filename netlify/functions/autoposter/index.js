@@ -1,9 +1,9 @@
 require("dotenv").config();
-const GoogleSheetsClient = require("../../src/clients/google.js");
-const TwitterClient = require("../../src/clients/twitter.js");
-const LinkedInClient = require("../../src/clients/linkedin.js");
-const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../../src/clients/time-windows.js");
-const TelegramNotifier = require("../../src/clients/telegram-notifications.js");
+const GoogleSheetsClient = require("../lib/google.js");
+const TwitterClient = require("../lib/twitter.js");
+const LinkedInClient = require("../lib/linkedin.js");
+const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../lib/time-windows.js");
+const TelegramNotifier = require("../lib/telegram-notifications.js");
 
 exports.handler = async function (event, context) {
   const currentTime = new Date();

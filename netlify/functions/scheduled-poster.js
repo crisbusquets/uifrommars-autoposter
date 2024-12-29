@@ -3,11 +3,15 @@ const GoogleSheetsClient = require("../../src/clients/google.js");
 const TwitterClient = require("../../src/clients/twitter.js");
 const LinkedInClient = require("../../src/clients/linkedin.js");
 const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../../src/clients/time-windows.js");
+const TelegramNotifier = require("../../src/clients/telegram-notifications.js");
 
 exports.handler = async (event, context) => {
+  const notifier = new TelegramNotifier();
+
   // Check if we're within a posting window and should post
   if (!shouldPostNow()) {
     const stats = getPostingStats();
+    await notifier.sendMessage(notifier.formatSkipped(stats));
     console.log("Skipping post. Current stats:", stats);
     return {
       statusCode: 200,
@@ -50,6 +54,7 @@ exports.handler = async (event, context) => {
 
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
+      await notifier.sendMessage("ℹ️ No eligible posts found - all posts are too recent");
       return {
         statusCode: 200,
         body: JSON.stringify({ message: "No eligible posts - all posts are too recent" }),
@@ -76,6 +81,7 @@ exports.handler = async (event, context) => {
         console.log("Twitter posting successful:", results.twitter);
       } catch (twitterError) {
         console.error("Error posting to Twitter:", twitterError);
+        await notifier.sendMessage(notifier.formatError(twitterError));
         results.twitter = { error: twitterError.message };
       }
     } else {
@@ -89,6 +95,7 @@ exports.handler = async (event, context) => {
         console.log("LinkedIn posting successful:", results.linkedin);
       } catch (linkedinError) {
         console.error("Error posting to LinkedIn:", linkedinError);
+        await notifier.sendMessage(notifier.formatError(linkedinError));
         results.linkedin = { error: linkedinError.message };
       }
     } else {
@@ -98,9 +105,9 @@ exports.handler = async (event, context) => {
     // Update last posted date if at least one platform was successful
     if (results.twitter || results.linkedin) {
       await googleClient.updateLastPosted(post.url);
+      await notifier.sendMessage(notifier.formatPost(post, message, results));
     }
 
-    const stats = getPostingStats();
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -108,11 +115,11 @@ exports.handler = async (event, context) => {
         post: post.url,
         results,
         timestamp: new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" }),
-        stats,
       }),
     };
   } catch (error) {
     console.error("Error in scheduled posting:", error);
+    await notifier.sendMessage(notifier.formatError(error));
     return {
       statusCode: 500,
       body: JSON.stringify({

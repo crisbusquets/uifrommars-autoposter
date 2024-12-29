@@ -1,46 +1,37 @@
-// scheduled-poster.js
-const GoogleSheetsClient = require("../../src/clients/google");
-const SocialMediaClient = require("../../src/clients/social");
+require("dotenv").config();
+const GoogleSheetsClient = require("../../src/clients/google.js");
+const TwitterClient = require("../../src/clients/twitter.js");
+const LinkedInClient = require("../../src/clients/linkedin.js");
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
+  // Initialize clients
+  const googleClient = new GoogleSheetsClient();
+  const twitterClient = new TwitterClient();
+  const linkedInClient = new LinkedInClient();
+
+  let results = {
+    twitter: null,
+    linkedin: null,
+  };
+
   try {
-    const sheets = new GoogleSheetsClient();
-    const social = new SocialMediaClient();
-
-    const posts = await sheets.getPosts();
+    // Get posts from Google Sheets
+    const posts = await googleClient.getPosts();
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
-    console.log("Total posts fetched:", posts.length);
+    console.log("All posts:", posts);
+    console.log("Thirty days ago:", new Date(thirtyDaysAgo).toISOString());
 
-    // Filter eligible posts with better date handling
+    // Filter eligible posts
     const eligiblePosts = posts.filter((post) => {
-      // If no lastPosted date exists, post is eligible
-      if (!post.lastPosted) {
-        console.log(`Post ${post.url} has never been posted - eligible`);
-        return true;
-      }
-
-      let lastPostedDate;
-      try {
-        // Try to parse the date
-        lastPostedDate = new Date(post.lastPosted).getTime();
-        // Check if we got a valid date
-        if (isNaN(lastPostedDate)) {
-          console.log(`Post ${post.url} has invalid date format - treating as eligible`);
-          return true;
-        }
-      } catch (error) {
-        console.log(`Post ${post.url} has unparseable date - treating as eligible`);
-        return true;
-      }
-
-      const isEligible = lastPostedDate < thirtyDaysAgo;
+      const lastPosted = post.lastPosted ? new Date(post.lastPosted).getTime() : 0;
+      const isEligible = lastPosted < thirtyDaysAgo;
       console.log(`Post ${post.url}: last posted ${post.lastPosted}, eligible: ${isEligible}`);
       return isEligible;
     });
 
-    console.log("Eligible posts found:", eligiblePosts.length);
+    console.log("Eligible posts:", eligiblePosts);
 
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
@@ -63,28 +54,47 @@ exports.handler = async (event) => {
     const message = messages[Math.floor(Math.random() * messages.length)];
     console.log("Selected message:", message);
 
-    // Post to social media
-    console.log("Attempting to post to social media...");
-    try {
-      const results = await social.post(message, post.url, post.title);
-      console.log("Social media posting results:", results);
-    } catch (error) {
-      console.error("Error posting to social media:", error);
-      throw error;
+    // Handle Twitter posting
+    if (process.env.ENABLE_TWITTER === "true") {
+      try {
+        results.twitter = await twitterClient.post(message, post.url);
+        console.log("Twitter posting successful:", results.twitter);
+      } catch (twitterError) {
+        console.error("Error posting to Twitter:", twitterError);
+        results.twitter = { error: twitterError.message };
+      }
+    } else {
+      console.log("Twitter posting disabled");
     }
 
-    // Update last posted date in Google Sheet
-    await sheets.updateLastPosted(post.url);
+    // Handle LinkedIn posting
+    if (process.env.ENABLE_LINKEDIN === "true") {
+      try {
+        results.linkedin = await linkedInClient.post(message, post.url, post.ogImage, post.title);
+        console.log("LinkedIn posting successful:", results.linkedin);
+      } catch (linkedinError) {
+        console.error("Error posting to LinkedIn:", linkedinError);
+        results.linkedin = { error: linkedinError.message };
+      }
+    } else {
+      console.log("LinkedIn posting disabled");
+    }
+
+    // Update last posted date if at least one platform was successful
+    if (results.twitter || results.linkedin) {
+      await googleClient.updateLastPosted(post.url);
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Posted successfully: ${message}`,
+        message: "Posting completed",
         post: post.url,
+        results,
       }),
     };
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in scheduled posting:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({

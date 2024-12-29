@@ -1,17 +1,23 @@
-// google.js
 const { google } = require("googleapis");
 
 class GoogleSheetsClient {
+  // Column mapping constants
+  static COLUMNS = {
+    URL: 0, // Column A
+    OG_IMAGE: 1, // Column B
+    TITLE: 2, // Column C
+    MESSAGES: 3, // Column D
+    LAST_POSTED: 4, // Column E
+  };
+
   constructor() {
-    // Create OAuth2 client using credentials
     this.auth = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
 
-    // Set credentials
     this.auth.setCredentials({
       access_token: process.env.GOOGLE_ACCESS_TOKEN,
       refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
       token_type: "Bearer",
-      expiry_date: true, // This will force a refresh if token is expired
+      expiry_date: true,
     });
   }
 
@@ -19,27 +25,48 @@ class GoogleSheetsClient {
     const sheets = google.sheets({ version: "v4", auth: this.auth });
 
     try {
+      console.log("Fetching posts from Google Sheets...");
+
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: "A:D", // Get needed columns
+        range: "A:E",
       });
 
       const rows = response.data.values || [];
+      console.log(`Found ${rows.length} rows (including header)`);
 
-      // Skip header row and map data
-      return rows
-        .slice(1)
-        .map((row) => ({
-          url: row[0] || "",
-          title: row[1] || "",
-          messages: row[2] || "",
-          lastPosted: row[3] || null, // Return null if no date exists
-        }))
-        .filter(
-          (post) =>
-            // Filter out rows with missing essential data
-            post.url && post.title && post.messages
-        );
+      if (rows.length <= 1) {
+        console.log("No data rows found in spreadsheet");
+        return [];
+      }
+
+      // Log header row to verify column order
+      const [header, ...dataRows] = rows;
+      console.log("Spreadsheet headers:", header);
+
+      const posts = dataRows.map((row, index) => {
+        const post = {
+          url: row[GoogleSheetsClient.COLUMNS.URL] || "",
+          ogImage: row[GoogleSheetsClient.COLUMNS.OG_IMAGE] || "",
+          title: row[GoogleSheetsClient.COLUMNS.TITLE] || "",
+          messages: row[GoogleSheetsClient.COLUMNS.MESSAGES] || "",
+          lastPosted: row[GoogleSheetsClient.COLUMNS.LAST_POSTED] || null,
+        };
+
+        // Debug log for each processed row
+        console.log(`Row ${index + 2} processed:`, {
+          url: post.url.substring(0, 50) + "...",
+          ogImage: post.ogImage.substring(0, 50) + "...",
+          title: post.title,
+          messagesPreview: post.messages.substring(0, 50) + "...",
+          lastPosted: post.lastPosted,
+        });
+
+        return post;
+      });
+
+      console.log(`Successfully processed ${posts.length} posts`);
+      return posts;
     } catch (error) {
       console.error("Error fetching from Google Sheets:", error);
       throw error;
@@ -50,7 +77,8 @@ class GoogleSheetsClient {
     const sheets = google.sheets({ version: "v4", auth: this.auth });
 
     try {
-      // First, find the row with matching URL
+      console.log(`Updating last posted date for URL: ${url}`);
+
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
         range: "A:A",
@@ -63,15 +91,19 @@ class GoogleSheetsClient {
         throw new Error(`URL ${url} not found in sheet`);
       }
 
-      // Update the last posted date in column D
+      console.log(`Found URL in row ${rowIndex + 1}`);
+
+      const now = new Date().toISOString();
       await sheets.spreadsheets.values.update({
         spreadsheetId: process.env.GOOGLE_SHEET_ID,
-        range: `D${rowIndex + 1}`,
+        range: `E${rowIndex + 1}`,
         valueInputOption: "RAW",
         resource: {
-          values: [[new Date().toISOString()]],
+          values: [[now]],
         },
       });
+
+      console.log(`Successfully updated last posted date to ${now}`);
     } catch (error) {
       console.error("Error updating last posted date:", error);
       throw error;

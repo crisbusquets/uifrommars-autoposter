@@ -2,8 +2,22 @@ require("dotenv").config();
 const GoogleSheetsClient = require("../../src/clients/google.js");
 const TwitterClient = require("../../src/clients/twitter.js");
 const LinkedInClient = require("../../src/clients/linkedin.js");
+const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../../src/clients/time-windows.js");
 
 exports.handler = async (event, context) => {
+  // Check if we're within a posting window and should post
+  if (!shouldPostNow()) {
+    const stats = getPostingStats();
+    console.log("Skipping post. Current stats:", stats);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Post skipped - outside window or probability check failed",
+        stats,
+      }),
+    };
+  }
+
   // Initialize clients
   const googleClient = new GoogleSheetsClient();
   const twitterClient = new TwitterClient();
@@ -20,6 +34,7 @@ exports.handler = async (event, context) => {
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
+    console.log("Current time (Spanish):", new Date(now).toLocaleString("es-ES", { timeZone: "Europe/Madrid" }));
     console.log("All posts:", posts);
     console.log("Thirty days ago:", new Date(thirtyDaysAgo).toISOString());
 
@@ -85,12 +100,15 @@ exports.handler = async (event, context) => {
       await googleClient.updateLastPosted(post.url);
     }
 
+    const stats = getPostingStats();
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: "Posting completed",
         post: post.url,
         results,
+        timestamp: new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" }),
+        stats,
       }),
     };
   } catch (error) {

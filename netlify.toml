@@ -7,4 +7,4 @@
   status = 200
 
 [functions]
-  schedule = "0 */4 * * *"  # Runs every 4 hours
+  schedule = "45-59/5 8, 0-15/5 9, 27-57/5 13, 0-45/5 18, 0-30/5 23, 0-30/5 1 * * *"

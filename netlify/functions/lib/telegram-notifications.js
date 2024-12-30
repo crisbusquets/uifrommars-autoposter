@@ -26,7 +26,9 @@ class TelegramNotifier {
   }
 
   formatPost(post, message, results) {
-    const platforms = [results.twitter && "𝕏 Twitter", results.linkedin && "💼 LinkedIn"].filter(Boolean);
+    const platforms = [];
+    if (results.twitter && !results.twitter.error) platforms.push("𝕏 Twitter");
+    if (results.linkedin && !results.linkedin.error) platforms.push("💼 LinkedIn");
 
     const timestamp = new Date().toLocaleString("es-ES", {
       timeZone: "Europe/Madrid",

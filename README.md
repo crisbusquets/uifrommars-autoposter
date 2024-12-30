@@ -5,7 +5,7 @@
 
 ## Basic Overview
 
-I've posted over 260 articles on [uiFromMars](https://www.uifrommars.com/). Despite doing well with SEO, I also share them on social networks. I don't want to manually schedule the posts, so that's why I ended up creating this "Autoposter.
+I've posted over 260 articles on [uiFromMars](https://www.uifrommars.com/). Despite doing well with SEO, I also share them on social networks. I don't want to manually schedule the posts, so that's why I ended up creating this "Autoposter".
 
 ## How Does This Work?
 
@@ -16,31 +16,9 @@ I've posted over 260 articles on [uiFromMars](https://www.uifrommars.com/). Desp
 
 ## How-To
 
-You need to set up an `.env` file to store all the variables required for this to work. Here's an example:
-
-```
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_ACCESS_TOKEN=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_SHEET_ID=
-
-TWITTER_API_KEY=
-TWITTER_API_SECRET=
-TWITTER_ACCESS_TOKEN=
-TWITTER_ACCESS_SECRET=
-
-LINKEDIN_USER_ID=
-LINKEDIN_ACCESS_TOKEN=
-
-ENABLE_TWITTER=true / false
-ENABLE_LINKEDIN=true / false
-
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-```
+You need to set up an `.env` file to store all the variables required for this to work. Rename [.env.example](.env.example) to `.env` and fill the variables with the corresponding values.
 
 ## Pending
 
-- Enhance LinkedIn's thumbnail preview.
-- Potentially create a WordPress plugin to skip the Spreadsheet step.
+- [ ] Enhance LinkedIn's thumbnail preview.
+- [ ] Create a WordPress plugin to skip the Spreadsheet step.

@@ -6,13 +6,11 @@ const { checkTimeWindow, shouldPostNow, getPostingStats } = require("../lib/time
 const TelegramNotifier = require("../lib/telegram-notifications.js");
 
 exports.handler = async function (event, context) {
-  const currentTime = new Date();
+  const timeWindow = checkTimeWindow(new Date());
   const notifier = new TelegramNotifier();
 
-  // Check if we're within any time window and should post
-  const windowCheck = checkTimeWindow(currentTime);
-
-  if (!windowCheck.inWindow || !shouldPostNow()) {
+  // Guard clause: skip post if outside window or probability check failed
+  if (!timeWindow.inWindow || !shouldPostNow()) {
     const stats = getPostingStats();
     await notifier.sendMessage(notifier.formatSkipped(stats));
     console.log("Skipping post. Current stats:", stats);

@@ -63,7 +63,7 @@ function resetDailyCountsIfNeeded() {
   return POSTS_PER_DAY.get(today);
 }
 
-function isWithinTimeWindow(date) {
+function checkTimeWindow(date) {
   // Use UTC hours and minutes directly
   const hour = date.getUTCHours();
   const minute = date.getUTCMinutes();
@@ -89,7 +89,7 @@ function isWithinTimeWindow(date) {
 
 function shouldPostNow() {
   const dailyCounts = resetDailyCountsIfNeeded();
-  const timeWindow = isWithinTimeWindow(new Date());
+  const timeWindow = checkTimeWindow(new Date());
 
   if (!timeWindow.inWindow) return false;
 
@@ -118,7 +118,7 @@ function getPostingStats() {
 }
 
 module.exports = {
-  isWithinTimeWindow,
+  checkTimeWindow,
   shouldPostNow,
   getPostingStats,
   TIME_WINDOWS,

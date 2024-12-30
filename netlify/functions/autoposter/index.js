@@ -2,7 +2,7 @@ require("dotenv").config();
 const GoogleSheetsClient = require("../lib/google.js");
 const TwitterClient = require("../lib/twitter.js");
 const LinkedInClient = require("../lib/linkedin.js");
-const { isWithinTimeWindow, shouldPostNow, getPostingStats } = require("../lib/time-windows.js");
+const { checkTimeWindow, shouldPostNow, getPostingStats } = require("../lib/time-windows.js");
 const TelegramNotifier = require("../lib/telegram-notifications.js");
 
 exports.handler = async function (event, context) {
@@ -10,7 +10,7 @@ exports.handler = async function (event, context) {
   const notifier = new TelegramNotifier();
 
   // Check if we're within any time window and should post
-  const windowCheck = isWithinTimeWindow(currentTime);
+  const windowCheck = checkTimeWindow(currentTime);
 
   if (!windowCheck.inWindow || !shouldPostNow()) {
     const stats = getPostingStats();

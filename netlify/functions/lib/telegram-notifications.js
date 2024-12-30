@@ -36,7 +36,7 @@ class TelegramNotifier {
       platforms.push("💼 LinkedIn");
     }
 
-    const timestamp = formatDisplayTime(new Date(), "Europe/Madrid");
+    const timestamp = formatDisplayTime(new Date());
 
     return `🚀 <b>New post published!</b>
 

@@ -31,10 +31,10 @@ const TIME_WINDOWS = {
   },
 };
 
-// Function to format display time in specified timezone
-function formatDisplayTime(date, timeZone = "Europe/Madrid") {
+// Function to format display time in Spain standards
+function formatDisplayTime(date) {
   return date.toLocaleString("es-ES", {
-    timeZone,
+    timeZone: "Europe/Madrid",
     hour12: false,
     dateStyle: "medium",
     timeStyle: "short",

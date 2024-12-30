@@ -77,7 +77,7 @@ class LinkedInClient {
         "https://api.linkedin.com/rest/images?action=initializeUpload",
         {
           initializeUploadRequest: {
-            owner: `urn:li:person:O_2_rrs7ZU`,
+            owner: `urn:li:person:${String(process.env.LINKEDIN_USER_ID)}`,
           },
         },
         {
@@ -180,7 +180,7 @@ class LinkedInClient {
     }
 
     const postData = {
-      author: `urn:li:person:O_2_rrs7ZU`,
+      author: `urn:li:person:${String(process.env.LINKEDIN_USER_ID)}`,
       commentary: message,
       visibility: "PUBLIC",
       distribution: {

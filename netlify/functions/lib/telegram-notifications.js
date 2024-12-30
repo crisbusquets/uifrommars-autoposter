@@ -26,30 +26,31 @@ class TelegramNotifier {
   }
 
   formatPost(post, message, results) {
+    // More robust platform detection
     const platforms = [];
-    if (results.twitter && !results.twitter.error) platforms.push("𝕏 Twitter");
-    if (results.linkedin && !results.linkedin.error) platforms.push("💼 LinkedIn");
+    if (results.twitter && !results.twitter.error) {
+      platforms.push("𝕏 Twitter");
+    }
+    if (results.linkedin && !results.linkedin.error) {
+      platforms.push("💼 LinkedIn");
+    }
 
-    const timestamp = new Date().toLocaleString("es-ES", {
-      timeZone: "Europe/Madrid",
-      hour12: false,
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    // Use the new formatDisplayTime function from time-windows.js
+    const timestamp = formatDisplayTime(new Date(), "Europe/Madrid");
 
-    return `🚀 <b>New Post Published!</b>
+    return `🚀 <b>New post published!</b>
 
 📝 <b>Message:</b>
 ${message}
 
-🔗 <b>Blog Post:</b>
+🔗 <b>Blog post:</b>
 ${post.url}
 
 📢 <b>Platforms:</b> ${platforms.join(", ")}
 
 🕒 <b>Posted at:</b> ${timestamp}
 
-#UIFromMars #AutoPoster`;
+#uiFromMars #AutoPoster`;
   }
 
   formatError(error) {
@@ -60,21 +61,21 @@ ${post.url}
 
     return `❌ <b>Posting Error</b>
 
-⚠️ <b>Error Message:</b>
+⚠️ <b>Error message:</b>
 ${error.message}
 
 🕒 <b>Time:</b> ${timestamp}
 
-#UIFromMarsError`;
+#uiFromMarsError`;
   }
 
   formatSkipped(stats) {
-    return `ℹ️ <b>Posting Window Update</b>
+    return `ℹ️ <b>Posting window update</b>
 
 Posts today: ${stats.total}
 Remaining windows: ${stats.remainingWindows.length}
 
-#UIFromMarsStatus`;
+#uiFromMarsStatus`;
   }
 }
 

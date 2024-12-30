@@ -6,23 +6,22 @@
   to = "/.netlify/functions/:splat"
   status = 200
 
-# European timezones (CET/CEST)
 [functions.autoposter]
-  # Morning (9:07 AM CET)
-  schedule = "07 9 * * *"
+  # Morning (7:45 UTC / 8:45 CET)
+  schedule = "45 7 * * *"
 
 [functions.autoposter-noon]     
-  # Noon (1:37 PM CET)
-  schedule = "37 13 * * *"
+  # Noon (12:27 UTC / 13:27 CET)
+  schedule = "27 12 * * *"
 
 [functions.autoposter-evening]  
-  # Evening (6:27 PM CET)
-  schedule = "27 18 * * *"
+  # Evening (17:00 UTC / 18:00 CET)
+  schedule = "00 17 * * *"
 
 [functions.autoposter-latam-evening]
-  # LATAM evening (11:17 PM CET / 6:17 PM LATAM)
-  schedule = "17 23 * * *"
+  # LATAM evening (22:00 UTC / 23:00 CET)
+  schedule = "00 22 * * *"
 
 [functions.autoposter-latam-night]
-  # LATAM night (1:07 AM CET / 8:07 PM LATAM)
-  schedule = "07 1 * * *"
+  # LATAM night (0:00 UTC / 1:00 CET)
+  schedule = "00 0 * * *"

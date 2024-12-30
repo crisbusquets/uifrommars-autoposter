@@ -1,36 +1,45 @@
-// time-windows.js
 const TIME_WINDOWS = {
   EUROPEAN_MORNING: {
-    start: { hour: 8, minute: 45 },
-    end: { hour: 9, minute: 15 },
+    start: { hour: 7, minute: 45 }, // 8:45 CET -> 7:45 UTC
+    end: { hour: 8, minute: 15 }, // 9:15 CET -> 8:15 UTC
     region: "EU",
-    probability: 0.35, // 90% chance of posting in this window
+    probability: 0.35,
   },
   EUROPEAN_NOON: {
-    start: { hour: 13, minute: 27 },
-    end: { hour: 13, minute: 57 },
+    start: { hour: 12, minute: 27 }, // 13:27 CET -> 12:27 UTC
+    end: { hour: 12, minute: 57 }, // 13:57 CET -> 12:57 UTC
     region: "EU",
     probability: 0.35,
   },
   EUROPEAN_EVENING: {
-    start: { hour: 18, minute: 0 },
-    end: { hour: 18, minute: 45 },
+    start: { hour: 17, minute: 0 }, // 18:00 CET -> 17:00 UTC
+    end: { hour: 17, minute: 45 }, // 18:45 CET -> 17:45 UTC
     region: "EU",
-    probability: 0.25, // Lower per-check probability due to longer window
+    probability: 0.25,
   },
   LATAM_EVENING: {
-    start: { hour: 23, minute: 0 },
-    end: { hour: 23, minute: 30 },
+    start: { hour: 22, minute: 0 }, // 23:00 CET -> 22:00 UTC
+    end: { hour: 22, minute: 30 }, // 23:30 CET -> 22:30 UTC
     region: "LATAM",
     probability: 0.35,
   },
   LATAM_NIGHT: {
-    start: { hour: 1, minute: 0 },
-    end: { hour: 1, minute: 30 },
+    start: { hour: 0, minute: 0 }, // 1:00 CET -> 0:00 UTC
+    end: { hour: 0, minute: 30 }, // 1:30 CET -> 0:30 UTC
     region: "LATAM",
     probability: 0.35,
   },
 };
+
+// Function to format display time in specified timezone
+function formatDisplayTime(date, timeZone = "Europe/Madrid") {
+  return date.toLocaleString("es-ES", {
+    timeZone,
+    hour12: false,
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 // Keep track of posts per window per day
 const POSTS_PER_DAY = new Map();
@@ -55,23 +64,20 @@ function resetDailyCountsIfNeeded() {
 }
 
 function isWithinTimeWindow(date) {
-  const hour = date.getHours();
-  const minute = date.getMinutes();
+  // Use UTC hours and minutes directly
+  const hour = date.getUTCHours();
+  const minute = date.getUTCMinutes();
 
-  // Check if current time falls within any of the defined windows
   for (const [windowName, window] of Object.entries(TIME_WINDOWS)) {
     if (hour === window.start.hour && hour === window.end.hour) {
-      // Within the same hour
       if (minute >= window.start.minute && minute <= window.end.minute) {
         return { inWindow: true, windowName, region: window.region, probability: window.probability };
       }
     } else if (hour === window.start.hour) {
-      // At start hour
       if (minute >= window.start.minute) {
         return { inWindow: true, windowName, region: window.region, probability: window.probability };
       }
     } else if (hour === window.end.hour) {
-      // At end hour
       if (minute <= window.end.minute) {
         return { inWindow: true, windowName, region: window.region, probability: window.probability };
       }
@@ -116,4 +122,5 @@ module.exports = {
   shouldPostNow,
   getPostingStats,
   TIME_WINDOWS,
+  formatDisplayTime,
 };

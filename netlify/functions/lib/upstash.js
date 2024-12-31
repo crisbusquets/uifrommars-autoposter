@@ -1,55 +1,57 @@
-const axios = require("axios");
+const { Client } = require("@upstash/qstash");
 const crypto = require("crypto");
+const { TIME_WINDOWS } = require("./posting-windows");
 
 class UpstashScheduler {
   constructor() {
+    this.client = new Client({ token: process.env.QSTASH_TOKEN });
     this.webhookUrl = process.env.NETLIFY_WEBHOOK_URL;
-    this.upstashUrl = process.env.QSTASH_URL;
-    this.upstashToken = process.env.QSTASH_TOKEN;
+
+    if (!this.webhookUrl) {
+      throw new Error("Missing NETLIFY_WEBHOOK_URL environment variable.");
+    }
+    if (!process.env.QSTASH_TOKEN) {
+      throw new Error("Missing QSTASH_TOKEN environment variable.");
+    }
   }
 
-  async createSchedule(windowName, cronExpression) {
-    const payload = {
-      cron: cronExpression,
-      callback: this.webhookUrl,
-      payload: { windowName },
-      retry: {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          factor: 2,
-        },
-      },
-    };
-
+  async createSchedule(windowName, cronExpression, region, probability) {
     try {
-      const response = await axios.post(this.upstashUrl, payload, {
-        headers: {
-          Authorization: `Bearer ${this.upstashToken}`,
-          "Content-Type": "application/json",
-        },
+      const response = await this.client.publish({
+        url: this.webhookUrl,
+        body: JSON.stringify({ windowName, region, probability }),
+        headers: { "Content-Type": "application/json" },
+        cron: cronExpression,
+        retries: 3,
+        retryDelay: 5000,
       });
-      return response.data;
+
+      console.log(`✅ Schedule created for ${windowName}: ${response.messageId}`);
+      return response;
     } catch (error) {
-      console.error(`Failed to create schedule for ${windowName}:`, error);
+      console.error(`❌ Failed to create schedule for ${windowName}:`, error.message);
       throw error;
     }
   }
 
-  async setupAllWindows(timeWindows) {
+  async setupAllWindows() {
     const results = [];
-    for (const [window, config] of Object.entries(timeWindows)) {
+    for (const [windowName, config] of Object.entries(TIME_WINDOWS)) {
       try {
-        const result = await this.createSchedule(window, config.cron);
-        results.push({ window, status: "success", id: result.id });
+        const result = await this.createSchedule(windowName, config.cron, config.region, config.probability);
+        results.push({ windowName, status: "success", id: result.messageId });
       } catch (error) {
-        results.push({ window, status: "error", error: error.message });
+        results.push({ windowName, status: "error", error: error.message });
       }
     }
     return results;
   }
 
   verifySignature(signature, body) {
+    if (!process.env.QSTASH_CURRENT_SIGNING_KEY) {
+      throw new Error("Missing QSTASH_CURRENT_SIGNING_KEY environment variable.");
+    }
+
     const expectedSignature = crypto
       .createHmac("sha256", process.env.QSTASH_CURRENT_SIGNING_KEY)
       .update(body)

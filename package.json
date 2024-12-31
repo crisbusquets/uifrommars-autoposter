@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@octokit/rest": "^19.0.7",
+    "@upstash/qstash": "^2.7.20",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "googleapis": "^118.0.0",
     "linkedin-api-client": "^0.3.0",
@@ -11,6 +13,7 @@
   },
   "scripts": {
     "dev": "netlify dev",
-    "build": "netlify build"
+    "build": "netlify build",
+    "setup-schedules": "node netlify/functions/lib/setup-schedules.js"
   }
 }

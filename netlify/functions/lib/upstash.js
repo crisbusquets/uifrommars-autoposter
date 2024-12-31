@@ -4,8 +4,8 @@ const crypto = require("crypto");
 class UpstashScheduler {
   constructor() {
     this.webhookUrl = process.env.NETLIFY_WEBHOOK_URL;
-    this.upstashUrl = process.env.UPSTASH_API_URL;
-    this.upstashToken = process.env.UPSTASH_TOKEN;
+    this.upstashUrl = process.env.QSTASH_URL;
+    this.upstashToken = process.env.QSTASH_TOKEN;
   }
 
   async createSchedule(windowName, cronExpression) {
@@ -50,7 +50,10 @@ class UpstashScheduler {
   }
 
   verifySignature(signature, body) {
-    const expectedSignature = crypto.createHmac("sha256", process.env.UPSTASH_SIGNING_KEY).update(body).digest("hex");
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.QSTASH_CURRENT_SIGNING_KEY)
+      .update(body)
+      .digest("hex");
 
     return signature === expectedSignature;
   }

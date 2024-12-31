@@ -12,7 +12,11 @@ exports.handler = async function (event, context) {
   // Guard clause: skip post if outside window or probability check failed
   if (!timeWindow.inWindow || !shouldPostNow()) {
     const stats = getPostingStats();
-    await notifier.sendMessage(notifier.formatSkipped(stats));
+    try {
+      await notifier.sendMessage(notifier.formatSkipped(stats));
+    } catch (error) {
+      console.error("Failed to send skip notification:", error);
+    }
     console.log("Skipping post. Current stats:", stats);
     return {
       statusCode: 200,
@@ -33,6 +37,8 @@ exports.handler = async function (event, context) {
     linkedin: null,
   };
 
+  let atLeastOneSuccess = false;
+
   try {
     // Get posts from Google Sheets
     const posts = await googleClient.getPosts();
@@ -52,7 +58,11 @@ exports.handler = async function (event, context) {
 
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
-      await notifier.sendMessage("ℹ️ No eligible posts found - all posts are too recent");
+      try {
+        await notifier.sendMessage("ℹ️ No eligible posts found - all posts are too recent");
+      } catch (error) {
+        console.error("Failed to send no-posts notification:", error);
+      }
       return {
         statusCode: 200,
         body: JSON.stringify({ message: "No eligible posts - all posts are too recent" }),
@@ -76,9 +86,14 @@ exports.handler = async function (event, context) {
       try {
         results.twitter = await twitterClient.post(message, post.url);
         console.log("Twitter posting successful:", results.twitter);
+        atLeastOneSuccess = true;
       } catch (twitterError) {
         console.error("Error posting to Twitter:", twitterError);
-        await notifier.sendMessage(notifier.formatError(twitterError));
+        try {
+          await notifier.sendMessage(notifier.formatError(twitterError));
+        } catch (notifyError) {
+          console.error("Failed to send Twitter error notification:", notifyError);
+        }
         results.twitter = { error: twitterError.message };
       }
     }
@@ -88,17 +103,35 @@ exports.handler = async function (event, context) {
       try {
         results.linkedin = await linkedInClient.post(message, post.url, post.ogImage, post.title);
         console.log("LinkedIn posting successful:", results.linkedin);
+        atLeastOneSuccess = true;
       } catch (linkedinError) {
         console.error("Error posting to LinkedIn:", linkedinError);
-        await notifier.sendMessage(notifier.formatError(linkedinError));
+        try {
+          await notifier.sendMessage(notifier.formatError(linkedinError));
+        } catch (notifyError) {
+          console.error("Failed to send LinkedIn error notification:", notifyError);
+        }
         results.linkedin = { error: linkedinError.message };
       }
     }
 
     // Update last posted date if at least one platform was successful
-    if (results.twitter || results.linkedin) {
-      await googleClient.updateLastPosted(post.url);
-      await notifier.sendMessage(notifier.formatPost(post, message, results));
+    if (atLeastOneSuccess) {
+      try {
+        await googleClient.updateLastPosted(post.url);
+        try {
+          await notifier.sendMessage(notifier.formatPost(post, message, results));
+        } catch (notifyError) {
+          console.error("Failed to send success notification:", notifyError);
+        }
+      } catch (updateError) {
+        console.error("Failed to update last posted date:", updateError);
+        try {
+          await notifier.sendMessage(notifier.formatError(updateError));
+        } catch (notifyError) {
+          console.error("Failed to send update error notification:", notifyError);
+        }
+      }
     }
 
     return {
@@ -112,7 +145,11 @@ exports.handler = async function (event, context) {
     };
   } catch (error) {
     console.error("Error in scheduled posting:", error);
-    await notifier.sendMessage(notifier.formatError(error));
+    try {
+      await notifier.sendMessage(notifier.formatError(error));
+    } catch (notifyError) {
+      console.error("Failed to send general error notification:", notifyError);
+    }
     return {
       statusCode: 500,
       body: JSON.stringify({

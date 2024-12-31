@@ -230,7 +230,20 @@ class LinkedInClient {
         headers: error.response?.headers,
       });
 
-      throw new Error(errorMessage);
+      const detailedError = new Error(errorMessage);
+      detailedError.status = errorStatus;
+      detailedError.data = errorData;
+      detailedError.headers = error.response?.headers;
+
+      console.error(`${errorMessage}:`, {
+        status: errorStatus,
+        data: errorData,
+        headers: error.response?.headers,
+        postData, // Log the data we tried to post
+        thumbnailUrn, // Log if we had a thumbnail
+      });
+
+      throw detailedError;
     }
   }
 }

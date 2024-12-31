@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { formatDisplayTime } = require("./time-windows");
 
 class TelegramNotifier {
   constructor() {
@@ -35,7 +36,6 @@ class TelegramNotifier {
       platforms.push("💼 LinkedIn");
     }
 
-    // Use the new formatDisplayTime function from time-windows.js
     const timestamp = formatDisplayTime(new Date());
 
     return `🚀 <b>New post published!</b>

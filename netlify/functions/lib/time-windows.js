@@ -88,23 +88,9 @@ function checkTimeWindow(date) {
 }
 
 function shouldPostNow() {
-  const dailyCounts = resetDailyCountsIfNeeded();
   const timeWindow = checkTimeWindow(new Date());
-
   if (!timeWindow.inWindow) return false;
-
-  // Don't post again if we've already posted in this window today
-  if (dailyCounts.windows[timeWindow.windowName] > 0) return false;
-
-  // Use the probability defined for this specific window
-  const shouldPost = Math.random() < timeWindow.probability;
-
-  if (shouldPost) {
-    dailyCounts.total += 1;
-    dailyCounts.windows[timeWindow.windowName] = 1;
-  }
-
-  return shouldPost;
+  return Math.random() < timeWindow.probability;
 }
 
 function getPostingStats() {

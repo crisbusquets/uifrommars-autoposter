@@ -1,27 +1,7 @@
 [build]
-  functions = "netlify/functions"
+  functions = "functions"
 
 [[redirects]]
-  from = "/*"
+  from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
-
-[functions.autoposter]
-  # Morning (7:45 UTC / 8:45 CET)
-  schedule = "45 7 * * *"
-
-[functions.autoposter-noon]     
-  # Noon (12:27 UTC / 13:27 CET)
-  schedule = "27 12 * * *"
-
-[functions.autoposter-evening]  
-  # Evening (17:00 UTC / 18:00 CET)
-  schedule = "00 17 * * *"
-
-[functions.autoposter-latam-evening]
-  # LATAM evening (22:00 UTC / 23:00 CET)
-  schedule = "00 22 * * *"
-
-[functions.autoposter-latam-night]
-  # LATAM night (0:00 UTC / 1:00 CET)
-  schedule = "00 0 * * *"

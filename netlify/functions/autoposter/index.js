@@ -2,32 +2,42 @@ require("dotenv").config();
 const GoogleSheetsClient = require("../lib/google.js");
 const TwitterClient = require("../lib/twitter.js");
 const LinkedInClient = require("../lib/linkedin.js");
-const { checkTimeWindow, shouldPostNow, getPostingStats } = require("../lib/time-windows.js");
+const { shouldPostNow, formatDisplayTime } = require("../lib/posting-windows");
 const TelegramNotifier = require("../lib/telegram-notifications.js");
+const UpstashScheduler = require("../lib/upstash");
 
 exports.handler = async function (event, context) {
-  const timeWindow = checkTimeWindow(new Date());
   const notifier = new TelegramNotifier();
 
-  // Guard clause: skip post if outside window or probability check failed
-  if (!timeWindow.inWindow || !shouldPostNow()) {
-    const stats = getPostingStats();
+  if (event.headers["upstash-signature"]) {
+    const scheduler = new UpstashScheduler();
+    const isValid = scheduler.verifySignature(event.headers["upstash-signature"], event.body);
+
+    if (!isValid) {
+      console.error("Invalid Upstash signature received");
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: "Invalid signature" }),
+      };
+    }
+  }
+
+  const body = JSON.parse(event.body || "{}");
+  const windowName = body.payload?.windowName;
+
+  if (!windowName || !shouldPostNow(windowName)) {
+    console.log("Skipping post - probability check failed");
     try {
-      await notifier.sendMessage(notifier.formatSkipped(stats));
+      await notifier.sendMessage(notifier.formatSkipped());
     } catch (error) {
       console.error("Failed to send skip notification:", error);
     }
-    console.log("Skipping post. Current stats:", stats);
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        message: "Post skipped - outside window or probability check failed",
-        stats,
-      }),
+      body: JSON.stringify({ message: "Post skipped - probability check failed" }),
     };
   }
 
-  // Initialize clients
   const googleClient = new GoogleSheetsClient();
   const twitterClient = new TwitterClient();
   const linkedInClient = new LinkedInClient();
@@ -40,7 +50,6 @@ exports.handler = async function (event, context) {
   let atLeastOneSuccess = false;
 
   try {
-    // Get posts from Google Sheets
     const posts = await googleClient.getPosts();
     const now = Date.now();
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
@@ -48,7 +57,6 @@ exports.handler = async function (event, context) {
     console.log("Current time (Spanish):", new Date(now).toLocaleString("es-ES", { timeZone: "Europe/Madrid" }));
     console.log("Thirty days ago:", new Date(thirtyDaysAgo).toISOString());
 
-    // Filter eligible posts
     const eligiblePosts = posts.filter((post) => {
       const lastPosted = post.lastPosted ? new Date(post.lastPosted).getTime() : 0;
       const isEligible = lastPosted < thirtyDaysAgo;
@@ -69,7 +77,6 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // Select random post and message
     const post = eligiblePosts[Math.floor(Math.random() * eligiblePosts.length)];
     console.log("Selected post:", post);
 
@@ -81,7 +88,6 @@ exports.handler = async function (event, context) {
     const message = messages[Math.floor(Math.random() * messages.length)];
     console.log("Selected message:", message);
 
-    // Handle Twitter posting
     if (process.env.ENABLE_TWITTER === "true") {
       try {
         results.twitter = await twitterClient.post(message, post.url);
@@ -98,7 +104,6 @@ exports.handler = async function (event, context) {
       }
     }
 
-    // Handle LinkedIn posting
     if (process.env.ENABLE_LINKEDIN === "true") {
       try {
         results.linkedin = await linkedInClient.post(message, post.url, post.ogImage, post.title);
@@ -115,7 +120,6 @@ exports.handler = async function (event, context) {
       }
     }
 
-    // Update last posted date if at least one platform was successful
     if (atLeastOneSuccess) {
       try {
         await googleClient.updateLastPosted(post.url);
@@ -140,7 +144,8 @@ exports.handler = async function (event, context) {
         message: "Posting completed",
         post: post.url,
         results,
-        timestamp: new Date().toLocaleString("es-ES", { timeZone: "Europe/Madrid" }),
+        timestamp: formatDisplayTime(new Date()),
+        window: windowName,
       }),
     };
   } catch (error) {

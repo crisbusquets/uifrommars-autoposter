@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { formatDisplayTime } = require("./time-windows");
+const { formatDisplayTime } = require("./posting-windows");
 
 class TelegramNotifier {
   constructor() {
@@ -69,11 +69,10 @@ ${error.message}
 #uiFromMarsError`;
   }
 
-  formatSkipped(stats) {
-    return `ℹ️ <b>Posting window update</b>
+  formatSkipped() {
+    return `ℹ️ <b>Post skipped</b>
 
-Posts today: ${stats.total}
-Remaining windows: ${stats.remainingWindows.length}
+Probability check failed.
 
 #uiFromMarsStatus`;
   }

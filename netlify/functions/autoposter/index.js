@@ -7,25 +7,56 @@ const TelegramNotifier = require("../lib/telegram-notifications.js");
 const UpstashScheduler = require("../lib/upstash");
 
 exports.handler = async function (event, context) {
+  console.log("Function triggered with body:", event.body);
+
   const notifier = new TelegramNotifier();
-
-  if (event.headers["upstash-signature"]) {
-    const scheduler = new UpstashScheduler();
-    const isValid = scheduler.verifySignature(event.headers["upstash-signature"], event.body);
-
-    if (!isValid) {
-      console.error("Invalid Upstash signature received");
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: "Invalid signature" }),
-      };
-    }
-  }
-
   const body = JSON.parse(event.body || "{}");
   const windowName = body.payload?.windowName;
 
-  if (!windowName || !shouldPostNow(windowName)) {
+  // If it's coming from QStash, verify signature
+  if (event.headers["upstash-signature"]) {
+    try {
+      const scheduler = new UpstashScheduler();
+      console.log("Headers:", event.headers);
+
+      // Skip verification in local dev
+      if (process.env.NETLIFY_DEV) {
+        console.log("Skipping signature verification in local dev");
+      } else {
+        const isValid = await scheduler.verifySignature(event.headers["upstash-signature"], event.body);
+
+        if (!isValid) {
+          console.error("Invalid signature received");
+          await notifier.sendMessage("❌ QStash signature verification failed");
+          return {
+            statusCode: 401,
+            body: JSON.stringify({ error: "Invalid signature" }),
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Signature verification error:", error);
+      await notifier.sendMessage(`❌ QStash error: ${error.message}`);
+      // Don't return error in dev
+      if (!process.env.NETLIFY_DEV) {
+        return {
+          statusCode: 500,
+          body: JSON.stringify({ error: "Signature verification failed" }),
+        };
+      }
+    }
+  }
+
+  if (!windowName) {
+    console.error("No window name provided");
+    await notifier.sendMessage("❌ No window name provided in request");
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "No window name provided" }),
+    };
+  }
+
+  if (!shouldPostNow(windowName)) {
     console.log("Skipping post - probability check failed");
     try {
       await notifier.sendMessage(notifier.formatSkipped());

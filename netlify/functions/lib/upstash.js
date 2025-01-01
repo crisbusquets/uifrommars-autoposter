@@ -58,12 +58,23 @@ class UpstashScheduler {
       throw new Error("Missing QSTASH_CURRENT_SIGNING_KEY environment variable.");
     }
 
+    // Log the received signature and body for debugging
+    console.log("Received signature:", signature);
+    console.log("Body to verify:", body);
+
+    // QStash sends signatures as "v1 sig1 v1 sig2 v1 sig3"
+    const signatures = signature.split(" ");
+
+    // Get all the actual signatures (every odd element)
+    const actualSignatures = signatures.filter((_, i) => i % 2 === 1);
+
     const expectedSignature = crypto
       .createHmac("sha256", process.env.QSTASH_CURRENT_SIGNING_KEY)
       .update(body)
       .digest("hex");
 
-    return signature === expectedSignature;
+    // Check if any of the signatures match
+    return actualSignatures.includes(expectedSignature);
   }
 }
 

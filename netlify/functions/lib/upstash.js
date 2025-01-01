@@ -19,7 +19,13 @@ class UpstashScheduler {
     try {
       const response = await this.client.publish({
         url: this.webhookUrl,
-        body: JSON.stringify({ windowName, region, probability }),
+        body: JSON.stringify({
+          payload: {
+            windowName,
+            region,
+            probability,
+          },
+        }),
         headers: { "Content-Type": "application/json" },
         cron: cronExpression,
         retries: 3,

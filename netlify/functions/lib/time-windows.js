@@ -1,37 +1,31 @@
 const TIME_WINDOWS = {
   EUROPEAN_MORNING: {
-    start: { hour: 7, minute: 45 }, // 8:45 CET -> 7:45 UTC
-    end: { hour: 8, minute: 15 }, // 9:15 CET -> 8:15 UTC
+    start: { hour: 7, minute: 45 },
+    end: { hour: 8, minute: 15 },
     region: "EU",
-    probability: 0.35,
   },
   EUROPEAN_NOON: {
-    start: { hour: 12, minute: 27 }, // 13:27 CET -> 12:27 UTC
-    end: { hour: 12, minute: 57 }, // 13:57 CET -> 12:57 UTC
+    start: { hour: 12, minute: 27 },
+    end: { hour: 12, minute: 57 },
     region: "EU",
-    probability: 0.35,
   },
   EUROPEAN_EVENING: {
-    start: { hour: 17, minute: 0 }, // 18:00 CET -> 17:00 UTC
-    end: { hour: 17, minute: 45 }, // 18:45 CET -> 17:45 UTC
+    start: { hour: 17, minute: 0 },
+    end: { hour: 17, minute: 45 },
     region: "EU",
-    probability: 0.25,
   },
   LATAM_EVENING: {
-    start: { hour: 22, minute: 0 }, // 23:00 CET -> 22:00 UTC
-    end: { hour: 22, minute: 30 }, // 23:30 CET -> 22:30 UTC
+    start: { hour: 22, minute: 0 },
+    end: { hour: 22, minute: 30 },
     region: "LATAM",
-    probability: 0.35,
   },
   LATAM_NIGHT: {
-    start: { hour: 0, minute: 0 }, // 1:00 CET -> 0:00 UTC
-    end: { hour: 0, minute: 30 }, // 1:30 CET -> 0:30 UTC
+    start: { hour: 0, minute: 0 },
+    end: { hour: 0, minute: 30 },
     region: "LATAM",
-    probability: 0.35,
   },
 };
 
-// Function to format display time in Spain standards
 function formatDisplayTime(date) {
   return date.toLocaleString("es-ES", {
     timeZone: "Europe/Madrid",
@@ -41,14 +35,12 @@ function formatDisplayTime(date) {
   });
 }
 
-// Keep track of posts per window per day
 const POSTS_PER_DAY = new Map();
 
 function resetDailyCountsIfNeeded() {
   const now = new Date();
   const today = now.toISOString().split("T")[0];
 
-  // Reset if it's a new day
   if (!POSTS_PER_DAY.has(today)) {
     POSTS_PER_DAY.clear();
     POSTS_PER_DAY.set(today, {
@@ -64,22 +56,21 @@ function resetDailyCountsIfNeeded() {
 }
 
 function checkTimeWindow(date) {
-  // Use UTC hours and minutes directly
   const hour = date.getUTCHours();
   const minute = date.getUTCMinutes();
 
   for (const [windowName, window] of Object.entries(TIME_WINDOWS)) {
     if (hour === window.start.hour && hour === window.end.hour) {
       if (minute >= window.start.minute && minute <= window.end.minute) {
-        return { inWindow: true, windowName, region: window.region, probability: window.probability };
+        return { inWindow: true, windowName, region: window.region };
       }
     } else if (hour === window.start.hour) {
       if (minute >= window.start.minute) {
-        return { inWindow: true, windowName, region: window.region, probability: window.probability };
+        return { inWindow: true, windowName, region: window.region };
       }
     } else if (hour === window.end.hour) {
       if (minute <= window.end.minute) {
-        return { inWindow: true, windowName, region: window.region, probability: window.probability };
+        return { inWindow: true, windowName, region: window.region };
       }
     }
   }
@@ -89,8 +80,7 @@ function checkTimeWindow(date) {
 
 function shouldPostNow() {
   const timeWindow = checkTimeWindow(new Date());
-  if (!timeWindow.inWindow) return false;
-  return Math.random() < timeWindow.probability;
+  return timeWindow.inWindow;
 }
 
 function getPostingStats() {

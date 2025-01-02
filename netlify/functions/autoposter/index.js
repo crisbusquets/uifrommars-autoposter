@@ -137,7 +137,7 @@ exports.handler = async function (event, context) {
 
     if (process.env.ENABLE_LINKEDIN === "true") {
       try {
-        results.linkedin = await linkedInClient.post(message, post.url, post.ogImage, post.title);
+        results.linkedin = await linkedInClient.post(message, post.url);
         console.log("LinkedIn posting successful:", results.linkedin);
         atLeastOneSuccess = true;
       } catch (linkedinError) {

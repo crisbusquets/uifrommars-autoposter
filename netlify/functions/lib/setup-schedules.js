@@ -1,33 +1,34 @@
 require("dotenv").config();
-const UpstashScheduler = require("./upstash");
+const { Client } = require("@upstash/qstash");
 const { TIME_WINDOWS } = require("./posting-windows");
 
+const scheduler = new Client({
+  token: process.env.QSTASH_TOKEN,
+});
+
 async function setup() {
-  const scheduler = new UpstashScheduler();
-
-  // Validate required environment variables
-  if (!process.env.QSTASH_TOKEN || !process.env.NETLIFY_WEBHOOK_URL) {
-    console.error("❌ Missing required environment variables (QSTASH_TOKEN or NETLIFY_WEBHOOK_URL).");
-    process.exit(1);
-  }
-
   console.log("⏳ Setting up schedules...");
-  try {
-    const results = await scheduler.setupAllWindows(TIME_WINDOWS);
 
-    // Log detailed results
-    console.log("✅ Schedule setup results:");
-    results.forEach((result) => {
-      if (result.status === "success") {
-        console.log(`   - ✅ Window: ${result.windowName}, Schedule ID: ${result.id}`);
-      } else {
-        console.error(`   - ❌ Window: ${result.windowName}, Error: ${result.error}`);
-      }
-    });
+  for (const [windowName, config] of Object.entries(TIME_WINDOWS)) {
+    try {
+      const response = await scheduler.schedules.create({
+        destination: process.env.NETLIFY_WEBHOOK_URL,
+        cron: config.cron,
+        body: JSON.stringify({
+          payload: {
+            windowName,
+          },
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        retries: 3,
+      });
 
-    console.log("🎉 All schedules processed.");
-  } catch (error) {
-    console.error("❌ Failed to setup schedules:", error);
+      console.log(`✅ Created schedule for ${windowName}:`, response.scheduleId);
+    } catch (error) {
+      console.error(`❌ Failed for ${windowName}:`, error.message);
+    }
   }
 }
 

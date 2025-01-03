@@ -27,12 +27,11 @@ class TelegramNotifier {
   }
 
   formatPost(post, message, results) {
-    // More robust platform detection
     const platforms = [];
-    if (results.twitter && !results.twitter.error) {
+    if (results.twitter?.data?.id) {
       platforms.push("𝕏 Twitter");
     }
-    if (results.linkedin && !results.linkedin.error) {
+    if (results.linkedin?.id) {
       platforms.push("💼 LinkedIn");
     }
 

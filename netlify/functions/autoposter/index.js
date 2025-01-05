@@ -27,7 +27,7 @@ exports.handler = async function (event, context) {
 
         if (!isValid) {
           console.error("Invalid signature received");
-          await notifier.sendMessage("❌ QStash signature verification failed");
+          await notifier.sendMessage(notifier.formatSkip("signature"));
           return {
             statusCode: 401,
             body: JSON.stringify({ error: "Invalid signature" }),
@@ -36,7 +36,7 @@ exports.handler = async function (event, context) {
       }
     } catch (error) {
       console.error("Signature verification error:", error);
-      await notifier.sendMessage(`❌ QStash error: ${error.message}`);
+      await notifier.sendMessage(notifier.formatError(error));
       // Don't return error in dev
       if (!process.env.NETLIFY_DEV) {
         return {
@@ -49,7 +49,7 @@ exports.handler = async function (event, context) {
 
   if (!windowName) {
     console.error("No window name provided");
-    await notifier.sendMessage("❌ No window name provided in request");
+    await notifier.sendMessage(notifier.formatSkip("no-window"));
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "No window name provided" }),
@@ -57,15 +57,15 @@ exports.handler = async function (event, context) {
   }
 
   if (!shouldPostNow(windowName)) {
-    console.log("Skipping post - probability check failed");
+    console.log("Skipping post - not in posting window");
     try {
-      await notifier.sendMessage(notifier.formatSkipped());
+      await notifier.sendMessage(notifier.formatSkip("window", `Window: ${windowName}`));
     } catch (error) {
       console.error("Failed to send skip notification:", error);
     }
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Post skipped - probability check failed" }),
+      body: JSON.stringify({ message: "Post skipped - not in posting window" }),
     };
   }
 
@@ -98,7 +98,7 @@ exports.handler = async function (event, context) {
     if (eligiblePosts.length === 0) {
       console.log("No eligible posts found - all posts are too recent");
       try {
-        await notifier.sendMessage("ℹ️ No eligible posts found - all posts are too recent");
+        await notifier.sendMessage(notifier.formatSkip("no-posts"));
       } catch (error) {
         console.error("Failed to send no-posts notification:", error);
       }

@@ -28,10 +28,14 @@ class TelegramNotifier {
 
   formatPost(post, message, results) {
     const platforms = [];
+
+    // Check Twitter success
     if (results.twitter?.data?.id) {
       platforms.push("𝕏 Twitter");
     }
-    if (results.linkedin?.id) {
+
+    // Check LinkedIn success
+    if (results.linkedin && !results.linkedin.error) {
       platforms.push("💼 LinkedIn");
     }
 
@@ -68,12 +72,35 @@ ${error.message}
 #uiFromMarsError`;
   }
 
-  formatSkipped() {
-    return `ℹ️ <b>Post skipped</b>
+  formatSkip(reason, details = "") {
+    const timestamp = formatDisplayTime(new Date());
 
-Probability check failed.
+    let message = `⏭️ <b>Post skipped</b>\n\n`;
 
-#uiFromMarsStatus`;
+    switch (reason) {
+      case "window":
+        message += `Not in valid posting window timeframe.`;
+        break;
+      case "no-posts":
+        message += `No eligible posts found - all posts are too recent (30-day buffer).`;
+        break;
+      case "no-window":
+        message += `No posting window specified in request.`;
+        break;
+      case "signature":
+        message += `Invalid QStash signature received.`;
+        break;
+      default:
+        message += reason; // Custom reason if provided
+    }
+
+    if (details) {
+      message += `\n\nℹ️ <b>Details:</b>\n${details}`;
+    }
+
+    message += `\n\n🕒 <b>Time:</b> ${timestamp}\n\n#uiFromMarsStatus`;
+
+    return message;
   }
 }
 

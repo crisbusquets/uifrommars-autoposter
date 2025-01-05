@@ -22,7 +22,48 @@ class LinkedInClient {
     }
   }
 
-  async post(message, url, title) {
+  // New method to initialize image upload
+  async initializeImageUpload() {
+    try {
+      const response = await axios.post(
+        "https://api.linkedin.com/rest/images?action=initializeUpload",
+        {
+          initializeUploadRequest: {
+            owner: `urn:li:person:${String(process.env.LINKEDIN_USER_ID).trim().replace("0", "O")}`,
+          },
+        },
+        {
+          headers: this.getHeaders(),
+        }
+      );
+      return response.data.value;
+    } catch (error) {
+      console.error("Failed to initialize image upload:", error.response?.data);
+      throw error;
+    }
+  }
+
+  // New method to upload image using the upload URL
+  async uploadImage(uploadUrl, imageUrl) {
+    try {
+      // Fetch the image from the provided URL
+      const imageResponse = await axios.get(imageUrl, {
+        responseType: "arraybuffer",
+      });
+
+      // Upload to LinkedIn's URL
+      await axios.put(uploadUrl, imageResponse.data, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      throw error;
+    }
+  }
+
+  async post(message, url, title, imageUrl = null) {
     const isTokenValid = await this.verifyToken();
     if (!isTokenValid) {
       throw new Error("LinkedIn token is invalid or expired");
@@ -33,7 +74,27 @@ class LinkedInClient {
       messagePreview: message.substring(0, 100),
       urlPreview: url.substring(0, 100),
       titleFromSpreadsheet: title,
+      imageUrl: imageUrl,
     });
+
+    let imageAsset = null;
+    if (imageUrl) {
+      try {
+        // Initialize image upload
+        const uploadInfo = await this.initializeImageUpload();
+
+        // Upload the image
+        await this.uploadImage(uploadInfo.uploadUrl, imageUrl);
+
+        // Store the image URN for the post
+        imageAsset = uploadInfo.image;
+
+        // Wait for image processing
+        await this.waitForImageProcessing(imageAsset);
+      } catch (error) {
+        console.warn("Failed to process image, continuing with post without image:", error);
+      }
+    }
 
     const postData = {
       author: `urn:li:person:${String(process.env.LINKEDIN_USER_ID).trim().replace("0", "O")}`,
@@ -54,6 +115,16 @@ class LinkedInClient {
       lifecycleState: "PUBLISHED",
       isReshareDisabledByAuthor: false,
     };
+
+    // Add image to post if available
+    if (imageAsset) {
+      postData.content = {
+        article: {
+          ...postData.content.article,
+          thumbnail: imageAsset,
+        },
+      };
+    }
 
     try {
       const response = await axios.post("https://api.linkedin.com/rest/posts", postData, {
@@ -87,6 +158,33 @@ class LinkedInClient {
 
       throw detailedError;
     }
+  }
+
+  // Helper method to wait for image processing
+  async waitForImageProcessing(imageUrn, maxAttempts = 10) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const encodedUrn = encodeURIComponent(imageUrn);
+        const response = await axios.get(`https://api.linkedin.com/rest/images/${encodedUrn}`, {
+          headers: this.getHeaders(),
+        });
+
+        if (response.data.status === "AVAILABLE") {
+          return true;
+        }
+
+        if (response.data.status === "PROCESSING_FAILED") {
+          throw new Error("Image processing failed");
+        }
+
+        // Wait 2 seconds before next attempt
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error("Error checking image status:", error);
+        throw error;
+      }
+    }
+    throw new Error("Image processing timeout");
   }
 
   getHeaders() {

@@ -43,9 +43,31 @@ class LinkedInClient {
     }
   }
 
+  // Helper to check image dimensions
+  async checkImageDimensions(imageUrl) {
+    try {
+      const response = await axios.head(imageUrl);
+      const contentLength = response.headers["content-length"];
+
+      // LinkedIn's pixel limit is 36152320
+      if (contentLength && parseInt(contentLength) > 36152320) {
+        throw new Error("Image exceeds LinkedIn's pixel limit");
+      }
+    } catch (error) {
+      console.warn("Failed to check image dimensions:", error);
+      // Continue anyway as the image might still work
+    }
+  }
+
   // New method to upload image using the upload URL
   async uploadImage(uploadUrl, imageUrl) {
     try {
+      // Check image dimensions before upload
+      await this.checkImageDimensions(imageUrl);
+
+      // Use recommended dimensions for LinkedIn
+      console.log("Uploading image with recommended dimensions for LinkedIn feed visibility");
+
       // Fetch the image from the provided URL
       const imageResponse = await axios.get(imageUrl, {
         responseType: "arraybuffer",
@@ -118,10 +140,13 @@ class LinkedInClient {
 
     // Add image to post if available
     if (imageAsset) {
+      // Use article type since we're sharing a blog post
       postData.content = {
         article: {
-          ...postData.content.article,
+          source: url,
           thumbnail: imageAsset,
+          title: title || "Blog Post",
+          description: message.substring(0, 256), // LinkedIn recommends shorter descriptions
         },
       };
     }

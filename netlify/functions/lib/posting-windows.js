@@ -1,23 +1,27 @@
+// posting-windows.js - Consolidated time window configuration
 const TIME_WINDOWS = {
+  // European time slots (Spain)
   EUROPEAN_MORNING: {
-    cron: "45 7 * * *",
+    cron: "15 9 * * *", // 9:15 AM Europe/Madrid
     region: "EU",
+    probability: 1.0, // Always post
   },
-  EUROPEAN_NOON: {
-    cron: "27 12 * * *",
+  EUROPEAN_AFTERNOON: {
+    cron: "37 13 * * *", // 1:37 PM Europe/Madrid
     region: "EU",
+    probability: 1.0,
   },
   EUROPEAN_EVENING: {
-    cron: "0 17 * * *",
+    cron: "45 18 * * *", // 6:45 PM Europe/Madrid
     region: "EU",
+    probability: 1.0,
   },
-  LATAM_EVENING: {
-    cron: "0 22 * * *",
+
+  // LATAM time slot (optimized for Mexico, Argentina, Colombia)
+  LATAM_PRIME: {
+    cron: "0 23 * * *", // 11:00 PM Europe/Madrid (5:00 PM Mexico/Colombia, 7:00 PM Argentina)
     region: "LATAM",
-  },
-  LATAM_NIGHT: {
-    cron: "0 0 * * *",
-    region: "LATAM",
+    probability: 1.0,
   },
 };
 
@@ -30,7 +34,8 @@ function formatDisplayTime(date) {
   });
 }
 
-// Always return true since we want to post 100% of the time
+// With Upstash, we don't need to check time windows locally
+// Instead, we just verify the window name exists in our config
 function shouldPostNow(windowName) {
   return TIME_WINDOWS[windowName] ? true : false;
 }

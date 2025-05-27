@@ -1,38 +1,30 @@
 // posting-windows.js - Consolidated time window configuration
 const TIME_WINDOWS = {
-  // European time slots (Spain)
-  EUROPEAN_MORNING: {
-    cron: "15 9 * * *", // 9:15 AM Europe/Madrid
+  EU_MORNING: {
+    start: "08:45",
+    end: "09:35",
+    timezone: "Europe/Madrid",
+    cron: "45 6 * * *", // QStash fires at 08:45 Madrid = 06:45 UTC
     region: "EU",
-    probability: 1.0, // Always post
+    probability: 1,
   },
-  EUROPEAN_AFTERNOON: {
-    cron: "37 13 * * *", // 1:37 PM Europe/Madrid
+  EU_AFTERNOON: {
+    start: "17:55",
+    end: "19:05",
+    timezone: "Europe/Madrid",
+    cron: "55 15 * * *", // 17:55 Madrid = 15:55 UTC
     region: "EU",
-    probability: 1.0,
+    probability: 1,
   },
-  EUROPEAN_EVENING: {
-    cron: "45 18 * * *", // 6:45 PM Europe/Madrid
-    region: "EU",
-    probability: 1.0,
-  },
-
-  // LATAM time slot (optimized for Mexico, Argentina, Colombia)
-  LATAM_PRIME: {
-    cron: "0 23 * * *", // 11:00 PM Europe/Madrid (5:00 PM Mexico/Colombia, 7:00 PM Argentina)
+  LATAM_AFTERNOON: {
+    start: "13:25",
+    end: "15:05",
+    timezone: "America/Mexico_City",
+    cron: "25 19 * * *", // 13:25 CDMX = 19:25 UTC
     region: "LATAM",
-    probability: 1.0,
+    probability: 1,
   },
 };
-
-function formatDisplayTime(date) {
-  return date.toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid",
-    hour12: false,
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
 
 // With Upstash, we don't need to check time windows locally
 // Instead, we just verify the window name exists in our config
@@ -42,6 +34,5 @@ function shouldPostNow(windowName) {
 
 module.exports = {
   TIME_WINDOWS,
-  formatDisplayTime,
   shouldPostNow,
 };

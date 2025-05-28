@@ -1,5 +1,11 @@
 const axios = require("axios");
-const { formatDisplayTime } = require("./posting-windows");
+
+function formatDisplayTime(date = new Date()) {
+  return date.toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid",
+    hour12: false,
+  });
+}
 
 class TelegramNotifier {
   constructor() {

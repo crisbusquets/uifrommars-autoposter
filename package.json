@@ -16,6 +16,9 @@
     "build": "netlify build",
     "setup-schedules": "node netlify/functions/lib/setup-schedules.js",
     "list-schedules": "node netlify/functions/lib/list-schedules.js",
-    "clean-schedules": "node netlify/functions/lib/clean-schedules.js"
+    "clean-schedules": "node netlify/functions/lib/clean-schedules.js",
+    "test": "node test/local-test.js",
+    "test-config": "node -e \"require('./netlify/functions/lib/config-check').checkConfig(); console.log('✅ Config OK')\"",
+    "test-dry-run": "node test/local-test.js"
   }
 }

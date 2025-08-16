@@ -3,3 +3,9 @@ node_modules
 .netlify
 .DS_Store
 run.js
+
+# Test files and backups
+test/
+*.backup
+*.bak
+index.js.backup

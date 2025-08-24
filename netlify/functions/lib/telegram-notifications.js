@@ -1,11 +1,7 @@
 const axios = require("axios");
 
-function formatDisplayTime(date = new Date()) {
-  return date.toLocaleString("es-ES", {
-    timeZone: "Europe/Madrid",
-    hour12: false,
-  });
-}
+// Import formatDisplayTime from the main index file
+const { formatDisplayTime } = require("../autoposter/index");
 
 class TelegramNotifier {
   constructor() {
@@ -57,7 +53,7 @@ ${post.url}
 
 📢 <b>Platforms:</b> ${platforms.join(", ")}
 
-🕒 <b>Posted at:</b> ${timestamp}
+🕐 <b>Posted at:</b> ${timestamp}
 
 #uiFromMars #AutoPoster`;
   }
@@ -73,7 +69,7 @@ ${post.url}
 ⚠️ <b>Error message:</b>
 ${error.message}
 
-🕒 <b>Time:</b> ${timestamp}
+🕐 <b>Time:</b> ${timestamp}
 
 #uiFromMarsError`;
   }
@@ -81,7 +77,7 @@ ${error.message}
   formatSkip(reason, details = "") {
     const timestamp = formatDisplayTime(new Date());
 
-    let message = `⏭️ <b>Post skipped</b>\n\n`;
+    let message = `⭐️ <b>Post skipped</b>\n\n`;
 
     switch (reason) {
       case "window":
@@ -104,10 +100,11 @@ ${error.message}
       message += `\n\nℹ️ <b>Details:</b>\n${details}`;
     }
 
-    message += `\n\n🕒 <b>Time:</b> ${timestamp}\n\n#uiFromMarsStatus`;
+    message += `\n\n🕐 <b>Time:</b> ${timestamp}\n\n#uiFromMarsStatus`;
 
     return message;
   }
 }
 
+// Export only the class
 module.exports = TelegramNotifier;

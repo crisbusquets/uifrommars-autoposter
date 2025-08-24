@@ -8,9 +8,17 @@ const { checkConfig } = require("../lib/config-check");
 const GoogleSheetsClient = require("../lib/google.js");
 const TwitterClient = require("../lib/twitter.js");
 const LinkedInClient = require("../lib/linkedin.js");
-const { shouldPostNow, formatDisplayTime } = require("../lib/posting-windows");
+const { shouldPostNow } = require("../lib/posting-windows");
 const TelegramNotifier = require("../lib/telegram-notifications.js");
 const UpstashScheduler = require("../lib/upstash");
+
+// Helper function for time formatting
+function formatDisplayTime(date = new Date()) {
+  return date.toLocaleString("es-ES", {
+    timeZone: "Europe/Madrid",
+    hour12: false,
+  });
+}
 
 exports.handler = async function (event, context) {
   logger.info("Autoposter function triggered");
@@ -234,3 +242,6 @@ exports.handler = async function (event, context) {
     };
   }
 };
+
+// Export the handler and utility function
+module.exports = { handler: exports.handler, formatDisplayTime };

@@ -37,7 +37,7 @@ class TelegramNotifier {
     }
 
     // Check LinkedIn success
-    if (results.linkedin && !results.linkedin.error) {
+    if (results.linkedin && results.linkedin !== "" && !results.linkedin.error) {
       platforms.push("💼 LinkedIn");
     }
 

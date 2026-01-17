@@ -215,7 +215,7 @@ class LinkedInClient {
   getHeaders() {
     return {
       Authorization: `Bearer ${this.credentials.accessToken}`,
-      "LinkedIn-Version": "202411",
+      "LinkedIn-Version": "202501",
       "Content-Type": "application/json",
       "X-Restli-Protocol-Version": "2.0.0",
     };

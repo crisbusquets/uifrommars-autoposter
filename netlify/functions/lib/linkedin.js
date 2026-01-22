@@ -34,7 +34,7 @@ class LinkedInClient {
         },
         {
           headers: this.getHeaders(),
-        }
+        },
       );
       return response.data.value;
     } catch (error) {
@@ -215,7 +215,7 @@ class LinkedInClient {
   getHeaders() {
     return {
       Authorization: `Bearer ${this.credentials.accessToken}`,
-      "LinkedIn-Version": "202501",
+      "LinkedIn-Version": "202601",
       "Content-Type": "application/json",
       "X-Restli-Protocol-Version": "2.0.0",
     };
